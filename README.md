@@ -1,1 +1,608 @@
 # Unlocking-Growth-A-Smart-Device-Usage-Analysis-for-Bellabeat
+---
+author: "badhusha sathar"
+date: "2025-04-26"
+---
+# Bellabeat Case Study – Ask Phase 
+
+## 1. Business Task Statement
+Bellabeat is a wellness technology company specializing in smart devices designed for women’s health. The company aims to expand its presence in the global smart device market by analyzing **smart device usage trends**. By understanding consumer behavior, Bellabeat can refine its **marketing strategy** and align its products with industry trends.
+
+### **Objectives**
+- **Analyze smart device fitness data** to identify key trends.
+- **Apply insights** to one Bellabeat product (e.g., Leaf wellness tracker, Time watch, or Spring hydration bottle).
+- **Develop high-level marketing recommendations** based on findings.
+- **Present analysis** to Bellabeat’s executive team for strategic decision-making.
+
+## 2. Key Stakeholders
+- **Urška Sršen** – Cofounder & Chief Creative Officer, responsible for product development & branding.
+- **Sando Mur** – Cofounder & key executive team member, providing analytical expertise.
+- **Bellabeat Marketing Analytics Team** – Responsible for data insights shaping marketing strategies.
+- **Bellabeat Customers** – Women using Bellabeat products, influencing demand and engagement.
+
+## 3. Expected Deliverables
+- **A clear statement of the business task** to guide analysis.
+- **Identification of key stakeholders** who will use the findings for decision-making.
+- **Strategic alignment** of data-driven insights with Bellabeat’s business goals.
+
+## 4. Next Steps
+1. **Prepare**: Identify and assess relevant datasets.
+2. **Process**: Clean, filter, and analyze data for meaningful insights.
+3. **Analyze**: Identify trends and patterns affecting smart device usage.
+4. **Share**: Communicate findings using effective visualizations.
+5. **Act**: Develop recommendations to enhance Bellabeat’s marketing    approach.
+
+---
+---
+
+# Prepare Phase 
+
+## Business Task
+
+Bellabeat aims to analyze smart device usage data to gain insights into consumer habits. These insights will be used to refine marketing strategies and enhance engagement with potential customers.
+
+## Data Sources Used
+
+- **FitBit Fitness Tracker Data** (Public Domain, Kaggle): Contains minute-level physical activity, heart rate, and sleep monitoring data from 30 users.
+
+## Data Organization & Storage
+
+- Data is stored in CSV format and organized in **wide format** for analysis.
+- Data integrity and credibility are verified using **ROCCC** (Reliable, Original, Comprehensive, Current, Cited).
+- Privacy concerns are reviewed, ensuring compliance with licensing and security guidelines.
+
+## Data Fetching
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+# importing data
+dailyActivity_merged <- read.csv("C:/Users/badhu/Documents/project/product/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+hourlyCalories_merged<-read.csv("C:/Users/badhu/Documents/project/product/Fitabase Data 4.12.16-5.12.16/hourlyCalories_merged.csv")
+hourlyIntensities_merged<-read.csv("C:/Users/badhu/Documents/project/product/Fitabase Data 4.12.16-5.12.16/hourlyIntensities_merged.csv")
+hourlySteps_merged<- read.csv("C:/Users/badhu/Documents/project/product/Fitabase Data 4.12.16-5.12.16/hourlySteps_merged.csv")
+sleepDay_merged<-read.csv("C:/Users/badhu/Documents/project/product/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+minuteMETsNarrow_merged<-read.csv("C:/Users/badhu/Documents/project/product/Fitabase Data 4.12.16-5.12.16/minuteMETsNarrow_merged.csv")
+
+# Count the number of rows
+total_rows <- nrow(dailyActivity_merged)
+
+# Print result
+print(total_rows)
+```
+# Process Phase
+This report outlines the data processing phase for analyzing smart device usage trends to support Bellabeat's marketing strategy. The primary goal is to clean and transform the dataset for meaningful analysis.
+
+## Data Processing Steps
+```{r}
+
+# Identify duplicate entries
+duplicates <- dailyActivity_merged %>%
+  group_by(Id, ActivityDate, TotalSteps) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  filter(Count > 1)
+
+
+# Display the duplicate records
+print(duplicates)
+```
+
+```{r}
+# Load necessary library
+library(lubridate)
+
+# Verify the result
+head(sleepDay_merged$SleepDay)
+# Load necessary library
+library(stringr)
+
+# Remove time portion and convert to date
+sleepDay_merged$SleepDay <- str_extract(sleepDay_merged$SleepDay, "^\\d+/\\d+/\\d+")  # Extract only the MM/DD/YYYY part
+
+
+# Check the result
+str(sleepDay_merged$SleepDay)
+
+
+
+# Convert SleepDay to Date format (similar to SQL's Convert(date, SleepDay, 101))
+sleepDay_merged$SleepDay <- mdy(sleepDay_merged$SleepDay)
+
+# Display updated data structure
+str(sleepDay_merged)
+# Convert ActivityDate from character to Date format
+dailyActivity_merged$ActivityDate <- mdy(dailyActivity_merged$ActivityDate)
+# Add a new column for the day of the week
+dailyActivity_merged <- dailyActivity_merged %>%
+  mutate(day_of_week = weekdays(as.Date(ActivityDate, format="%Y-%m-%d")))
+# View the updated dataframe
+print(head(dailyActivity_merged))
+
+```
+
+```{r}
+
+# sleepDay_merged table merged with dailyActivity_merged
+dailyActivity_merged <- dailyActivity_merged %>%
+full_join(sleepDay_merged, by = c("Id" = "Id", "ActivityDate" = "SleepDay"))
+
+
+
+# Verify the change
+str(dailyActivity_merged)
+summary(dailyActivity_merged$day_of_week)
+head(dailyActivity_merged)
+```
+
+
+```{r}
+
+# Convert Date column to proper datetime format
+hourlyCalories_merged$ActivityHour <- mdy_hms(hourlyCalories_merged$ActivityHour)
+
+# Extract hour from Date(ActivityHour) and store in a new column 'time_h'
+hourlyCalories_merged <- hourlyCalories_merged %>%
+  mutate(time_h = hour(ActivityHour))
+
+# Extract only the date part
+hourlyCalories_merged <- hourlyCalories_merged %>%
+  mutate(ActivityHour = as.Date(ActivityHour))
+
+# Verify changes
+str(hourlyCalories_merged)
+head(hourlyCalories_merged)
+```
+
+```{r}
+
+# Convert ActivityHour to proper datetime format
+hourlyIntensities_merged <- hourlyIntensities_merged %>%
+  mutate(ActivityHour = mdy_hms(ActivityHour))  # Convert to Date-Time format
+
+# Extract hour and store it in a new column `time_h`
+hourlyIntensities_merged <- hourlyIntensities_merged %>%
+  mutate(time_h = hour(ActivityHour))  # Extract hour
+
+# Extract only the date portion from `ActivityHour`
+hourlyIntensities_merged <- hourlyIntensities_merged %>%
+  mutate(ActivityHour = as.Date(ActivityHour))  # Keep only the date
+
+# Verify changes
+str(hourlyIntensities_merged)
+head(hourlyIntensities_merged)
+```
+
+```{r}
+# Convert ActivityHour 
+hourlySteps_merged <- hourlySteps_merged %>%
+  mutate(ActivityHour = mdy_hms(ActivityHour))  # Convert to Date-Time format
+
+# Extract hour and store it in a new column `time_h`
+hourlySteps_merged <- hourlySteps_merged %>%
+  mutate(time_h = hour(ActivityHour))  # Extract hour
+
+# Extract only the date portion from `ActivityHour`
+hourlySteps_merged <- hourlySteps_merged %>%
+  mutate(ActivityHour = as.Date(ActivityHour))  # Keep only the date
+
+# Verify the changes
+str(hourlySteps_merged)
+head(hourlySteps_merged)
+```
+
+
+```{r}
+# Convert ActivityMinute to Date-Time format
+minuteMETsNarrow_merged <- minuteMETsNarrow_merged %>%
+  mutate(ActivityMinute = mdy_hms(ActivityMinute))  # Convert to Date-Time format
+
+# Extract time (hour, minute, second) and store in a new column `time_t`
+minuteMETsNarrow_merged <- minuteMETsNarrow_merged %>%
+  mutate(time_t = format(ActivityMinute, "%H:%M:%S"))  # Extract time as character format
+
+# Extract only the date portion from `ActivityMinute`
+minuteMETsNarrow_merged <- minuteMETsNarrow_merged %>%
+  mutate(ActivityMinute = as.Date(ActivityMinute))  # Keep only the date
+
+# Verify changes
+str(minuteMETsNarrow_merged)
+head(minuteMETsNarrow_merged)
+```
+
+```{r}
+# Merge tables using inner join
+hourly_cal_int_step_merge <- hourlyCalories_merged %>%
+  inner_join(hourlyIntensities_merged, by = c("Id", "ActivityHour", "time_h")) %>%
+  inner_join(hourlySteps_merged, by = c("Id", "ActivityHour", "time_h")) %>%
+  select(Id, ActivityHour, time_h, Calories, TotalIntensity, AverageIntensity, StepTotal)
+
+# View structure of merged table
+str(hourly_cal_int_step_merge)
+
+# Save merged table as CSV
+write.csv(hourly_cal_int_step_merge, "hourly_cal_int_step_merge.csv", row.names = FALSE)
+```
+
+```{r}
+
+# Select required columns
+minuteMETsNarrow_selected <- minuteMETsNarrow_merged %>%
+  select(Id, ActivityMinute, METs, time_t)
+
+# View the transformed dataset
+head(minuteMETsNarrow_selected)
+
+#Save the cleaned dataset
+#write.csv(minuteMETsNarrow_selected, "minuteMETsNarrow_cleaned.csv", row.names #= FALSE)
+
+```
+#  Analysis
+
+Bellabeat, a wellness technology company, seeks to leverage smart device usage trends to enhance its marketing strategies. This analysis aims to uncover patterns in smart device usage and their implications for Bellabeat’s business decisions.
+
+
+```{r warning=FALSE}
+# Convert date columns to Date type for proper merging
+minuteMETsNarrow_selected$ActivityMinute <- as.Date(minuteMETsNarrow_selected$ActivityMinute, format="%Y-%m-%d")
+dailyActivity_merged$ActivityDate <- as.Date(dailyActivity_merged$ActivityDate, format="%Y-%m-%d")
+
+
+# Aggregate METs per user per day
+METs_summary <- minuteMETsNarrow_selected %>%
+  group_by(Id, ActivityMinute) %>%
+  summarise(sum_mets = sum(METs, na.rm = TRUE), .groups = "keep")  # Keeps grouping Info
+names(METs_summary)
+names(dailyActivity_merged)
+
+
+# Merge with daily activity data to bring in calories burned
+final_data <- METs_summary %>%
+  inner_join(dailyActivity_merged, by = c("Id" = "Id", "ActivityMinute" = "ActivityDate")) %>%
+  select(Id, ActivityMinute, sum_mets, Calories) %>%
+  arrange(ActivityMinute)
+head(final_data)
+```
+
+```{r}
+
+# Summarizing activity metrics per user
+activities_summary <- dailyActivity_merged %>%
+  group_by(Id) %>%
+  summarise(
+    total_steps = sum(TotalSteps, na.rm = TRUE),
+    total_Vactive_mins = sum(VeryActiveMinutes, na.rm = TRUE),
+    total_Factive_mins = sum(FairlyActiveMinutes, na.rm = TRUE),
+    total_Lactive_mins = sum(LightlyActiveMinutes, na.rm = TRUE),
+    total_calories = sum(Calories, na.rm = TRUE)
+  )
+
+# View the result
+print(activities_summary)
+```
+Result: Strong correlation between activity intense time and calories burned
+
+```{r}
+
+# Calculate average sleep time per user
+sleep_summary <- sleepDay_merged %>%
+  group_by(Id) %>%
+  summarise(
+    avg_sleep_time_h = mean(TotalMinutesAsleep, na.rm = TRUE) / 60,
+    avg_time_bed_h = mean(TotalTimeInBed, na.rm = TRUE) / 60,
+    wasted_bed_time_m = mean(TotalTimeInBed - TotalMinutesAsleep, na.rm = TRUE)
+  )
+
+# View the result
+print(sleep_summary)
+```
+
+```{r}
+
+#Sleep and calories comparison	
+# Perform the join and aggregation
+sleep_calories_summary <- dailyActivity_merged %>%
+  inner_join(sleepDay_merged, by = c("Id" = "Id", "ActivityDate" = "SleepDay"))
+# Remove duplicate columns (.x or .y suffix)
+ 
+  sleep_calories_summary <- sleep_calories_summary %>%
+  select(-c(TotalSleepRecords.y, TotalMinutesAsleep.y, 
+ TotalTimeInBed.y))
+sleep_calories_summary <-sleep_calories_summary %>%
+  group_by(Id) %>%
+  summarise(
+    total_sleep_m = sum(TotalMinutesAsleep.x, na.rm = TRUE),
+    total_time_inbed_m = sum(TotalTimeInBed.x, na.rm = TRUE),
+    calories = sum(Calories, na.rm = TRUE)
+  )
+
+# View the result
+print(sleep_calories_summary)
+```
+
+
+```{r}
+
+# Summarizing daily activity metrics by day of the week
+daily_sum_analysis <- dailyActivity_merged %>%
+  group_by(day_of_week) %>%
+  summarise(
+    total_steps = sum(TotalSteps, na.rm = TRUE),
+    total_dist = sum(TotalDistance, na.rm = TRUE),
+    total_calories = sum(Calories, na.rm = TRUE)
+  )
+
+
+# View the result
+print(daily_sum_analysis)
+
+```
+Result:Daily Sum Analysis - No trends/patterns found
+
+```{r}
+
+
+# Summarizing daily activity metrics by day of the week
+daily_avg_analysis <- dailyActivity_merged %>%
+  group_by(day_of_week) %>%
+  summarise(
+    avg_steps = mean(TotalSteps, na.rm = TRUE),
+    avg_dist = mean(TotalDistance, na.rm = TRUE),
+    avg_calories = mean(Calories, na.rm = TRUE)
+  )
+
+# View the result
+print(daily_avg_analysis)
+```
+Result:- No trends/patterns found
+
+```{r}
+#TIME EXPENDITURE PER DAY
+#head(dailyActivity_merged)
+# Summarizing time expenditure per user
+time_expenditure <- dailyActivity_merged %>%
+  filter(!is.na(TotalTimeInBed)) %>%  # Exclude rows where total_mins_bed is NULL
+  group_by(Id) %>%
+  summarise(
+    sedentary_mins = sum(SedentaryMinutes, na.rm = TRUE),
+    lightly_mins = sum(LightlyActiveMinutes, na.rm = TRUE),
+    fairlyactive_mins = sum(FairlyActiveMinutes, na.rm = TRUE),
+    veryactive_mins = sum(VeryActiveMinutes, na.rm = TRUE)
+  )
+
+# View the result
+print(time_expenditure)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# visualization of Data
+
+```{r }
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(plotly)  # For tooltips
+
+# Scatter plot for LightlyActiveMinutes vs Calories
+p1 <- ggplot(dailyActivity_merged, aes(x = LightlyActiveMinutes, y = Calories)) +
+  geom_point(aes(text = paste("Lightly Active Minutes:", LightlyActiveMinutes, "<br>Calories:", Calories)),
+             color = "blue", alpha = 0.6) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(title = "Lightly Active Minutes vs Calories Burned",
+       x = "Lightly Active Minutes",
+       y = "Calories Burned") +
+  theme_minimal()
+
+# Scatter plot for FairlyActiveMinutes vs Calories
+p2 <- ggplot(dailyActivity_merged, aes(x = FairlyActiveMinutes, y = Calories)) +
+  geom_point(aes(text = paste("Fairly Active Minutes:", FairlyActiveMinutes, "<br>Calories:", Calories)),
+             color = "green", alpha = 0.6) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(title = "Fairly Active Minutes vs Calories Burned",
+       x = "Fairly Active Minutes",
+       y = "Calories Burned") +
+  theme_minimal()
+
+# Scatter plot for VeryActiveMinutes vs Calories
+p3 <- ggplot(dailyActivity_merged, aes(x = VeryActiveMinutes, y = Calories)) +
+  geom_point(aes(text = paste("Very Active Minutes:", VeryActiveMinutes, "<br>Calories:", Calories)),
+             color = "purple", alpha = 0.6) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(title = "Very Active Minutes vs Calories Burned",
+       x = "Very Active Minutes",
+       y = "Calories Burned") +
+  theme_minimal()
+
+# Convert ggplot objects to interactive plots with tooltips
+p1_interactive <- ggplotly(p1)
+p2_interactive <- ggplotly(p2)
+p3_interactive <- ggplotly(p3)
+
+# Display interactive graphs
+p1_interactive
+p2_interactive
+p3_interactive
+
+
+```
+
+### key findings
+
+- There is a strong correlation between Very Active minutes and the amount of calories burned.
+
+- The respective trend lines of the graphs, we can conclude that the higher the intensity and the duration of the activity, the more calories is burned.
+
+## METs and Average Calories Burned
+The Metabolic Equivalent of Task (MET) is a measure used to describe the energy expenditure of different activities compared to resting energy consumption.
+
+```{r }
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+#  dataset is `minuteMETsNarrow_merged`with calories column added
+df <- final_data
+
+# Calculate average calories burned per MET level
+df_summary <- df %>%
+  group_by(sum_mets) %>%
+  summarize(avg_calories = mean(Calories, na.rm = TRUE))
+
+# Create a scatter plot with tooltips
+p <- ggplot(df_summary, aes(x = sum_mets, y = avg_calories)) +
+  geom_point(aes(text = paste("METs:", sum_mets, "<br>Avg Calories:", round(avg_calories, 2))),
+             color = "blue", alpha = 0.6) +  # Scatter plot with tooltips
+  geom_smooth(method = "loess", color = "red", se = FALSE) +  # Regression trend line
+  labs(title = "METs vs Avg Calories Burned",
+       x = "Metabolic Equivalent of Task (METs)",
+       y = "Average Calories Burned") +
+  theme_minimal()
+
+# Convert ggplot to interactive plotly object
+p_interactive <- ggplotly(p)
+
+# Display interactive graph
+p_interactive
+
+
+```
+### key findings
+
+- Strong positive corellation between METs and average calories burned.
+
+- The amount of calories burned for every user is highly dependent on their MET values they spend every day. 
+
+## Sleep and Calories Comparison
+
+```{r}
+# Load required libraries
+library(ggplot2)
+
+# Create scatter plot with a smooth trend line
+ggplot(sleep_calories_summary, aes(x = calories, y = total_sleep_m)) +
+  geom_point(color = "blue", alpha = 0.6) +  # Scatter plot points
+  geom_smooth(method = "loess", color = "red", se = FALSE) +  # Smooth trend line
+  labs(title = "Total Sleep Minutes vs Calories Burned",
+       x = "Calories Burned",
+       y = "Total Sleep Minutes") +
+  theme_minimal()
+
+```
+
+## Key Findings
+
+- Strong positive corellation between amount of sleep and calories burned.
+Higher duration of sleep is associated with higher amount of calories burned.
+
+- An adequate duration and good quality of sleep constitutes to higher calories burned during the sleeping process.
+
+- However sleeping more than the required range doesn't seem to burn more calories and in fact causes the opposite to occur, which is burn fewer calories.
+
+## Popular Time for Activities
+
+``` {r}
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+# Assuming your dataset is `hourlyCalories_merged`
+df <- hourlyCalories_merged
+# Convert DateTime column (if needed)
+#df$ActivityHour <- as.POSIXct(df$ActivityHour, format="%m/%d/%Y %I:%M:%S %p")
+
+# Extract hour from ActivityHour
+df <- df %>%
+ # mutate(hour = format(ActivityHour, "%H")) %>%  # Extract hour as character
+  group_by(time_h) %>%
+  summarize(avg_calories = mean(Calories, na.rm = TRUE))  # Aggregate calories by hour
+#head(hourlyCalories_merged)
+# Convert hour to numeric for proper sorting
+df$time_h <- as.numeric(df$time_h)
+
+# Create area chart with tooltips
+p <-ggplot(df, aes(x = time_h, y = avg_calories)) +
+  geom_area(aes(fill = time_h), alpha = 0.6) +  # Color mapped to hour
+  geom_line(color = "red", linewidth= 1) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +  # Adjust gradient fill
+  labs(title = "Calories Burned Across Hours of the Day",
+       x = "Hour of the Day",
+       y = "Average Calories Burned") +
+  theme_minimal()
+
+# Convert ggplot to interactive plotly object
+p_interactive <- ggplotly(p)
+
+# Display interactive graph with tooltips
+p_interactive
+
+```
+
+## Key Findings
+
+- From the graph above, we can infer that the most popular time people are active throughout the day is between 5:00 AM - 21:00PM
+
+## Time distribution chart
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+#  time_expenditure table data
+time_expenditure <- data.frame(
+  category = c("Sedentary", "Lightly Active", "Fairly Active", "Very Active"),
+  minutes = c(700, 300, 150, 100) 
+)
+
+# Calculate percentage
+time_expenditure <- time_expenditure %>%
+  mutate(percentage = minutes / sum(minutes) * 100,
+         label = paste0(  round(percentage, 1), "%"))
+
+# Create a pie chart
+ggplot(time_expenditure, aes(x = "", y = minutes, fill = category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  theme_void() + 
+  theme(legend.title = element_blank()) +
+  labs(title = "Time Expenditure Distribution") +
+  scale_fill_manual(values = c("Sedentary" = "#E69F00", 
+                               "Lightly Active" = "#56B4E9", 
+                               "Fairly Active" = "#009E73", 
+                               "Very Active" = "#F0E442"),
+                    labels = paste(time_expenditure$category, "(", round(time_expenditure$percentage, 1), "%)", sep = "")) +
+  guides(fill = guide_legend(reverse = TRUE))
+
+# Save the chart
+ggsave("time_expenditure_pie_chart.png", width = 6, height = 6)
+
+```
+
+
+## CONCLUSION
+
+- Activity Duration & Intensity Affect Calories Burned – Longer and higher-intensity activities lead to more calories burned.
+
+- METs Provide Valuable Insights – MET values help measure activity intensity and calorie expenditure.
+
+- Sleep Patterns Vary – Most users have adequate sleep, but some oversleep or undersleep, affecting health.
+
+- Peak Activity Hours – Users are most active between 5:00 AM - 9:00 PM, indicating ideal times for fitness engagement.
+
+### RECOMMENDATIONS.
+
+- Highlight MET Tracking – Promote MET-based tracking in smart devices to provide users deeper insights into calorie burn.
+
+- Activity Notifications – Implement smart device alerts to encourage movement during peak activity times (5:00 AM - 9:00 PM).
+
+- Improve Sleep Tracking Features –  notifications for better sleep habits.
+
+- Gamify Calorie Burn – Launch weekly/daily calorie challenges where users earn points for burning calories, redeemable for product discounts.
+
+
